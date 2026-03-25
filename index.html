@@ -867,13 +867,19 @@ function isSeoulOnly(text) {
 
 function getHotspots() {
   const now = new Date().getHours();
-  // 현재 시간 ±2시간 + 서울 외 지역 제외
-  const rel = allData.filter(d =>
-    Math.abs(d.hour - now) <= 2 &&
+  // 현재 시간 ±3시간 필터 (없으면 전체 데이터 사용)
+  let rel = allData.filter(d =>
+    Math.abs(d.hour - now) <= 3 &&
     isSeoulOnly(d.origin) &&
-    isSeoulOnly(d.dest) &&
-    d.dong !== '서울' // 구 특정 안 된 데이터 제외
+    isSeoulOnly(d.dest)
   );
+  // 시간대 데이터가 너무 적으면 전체 사용
+  if (rel.length < 5) {
+    rel = allData.filter(d =>
+      isSeoulOnly(d.origin) && isSeoulOnly(d.dest)
+    );
+  }
+
   const cnt = {}, crd = {};
   rel.forEach(d => {
     cnt[d.dong] = (cnt[d.dong]||0)+1;
@@ -883,11 +889,10 @@ function getHotspots() {
   const spots = Object.entries(cnt)
     .map(([name,count])=>({name, count, coords:crd[name]}));
 
-  // GPS 있으면 거리 가중치 적용 (가까울수록 우선)
+  // GPS 있으면 거리 가중치 적용
   if (userLat !== null) {
     spots.forEach(s => {
       s.dist = distKm(userLat, userLng, s.coords[0], s.coords[1]);
-      // 점수 = 콜수 - 거리 페널티 (2km 이내는 보너스)
       s.score = s.count + (s.dist <= 2 ? 5 : 0) - s.dist * 1.5;
     });
     spots.sort((a,b) => b.score - a.score);
