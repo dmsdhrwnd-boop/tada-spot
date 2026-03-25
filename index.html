@@ -605,8 +605,8 @@ async function initStorage() {
   }
 }
 
-// 앱 시작 시 저장 데이터 로드
-initStorage();
+// 앱 시작 시 저장 데이터 로드 → 모든 함수 정의 후 실행
+window.addEventListener('DOMContentLoaded', () => initStorage());
 
 // ── SEOUL GU COORDS ───────────────────────────────────────────
 const guCoords = {
@@ -686,7 +686,7 @@ async function processQueue(files) {
   let done = 0, totalCalls = 0;
   for (const file of files) {
     done++;
-    showOverlay(`분석 중... (${done}/${files.length}장)\n잠시만 기다려 주세요`);
+    showOverlay(`분석 중... (${done}/${files.length}장)`);
     document.getElementById('procSub').textContent = `${done}/${files.length}장 처리 중`;
     try {
       const b64 = await readFileAsBase64(file);
@@ -699,7 +699,8 @@ async function processQueue(files) {
   }
   hideOverlay();
   updateHomeStats();
-  showToast(`✅ ${files.length}장 완료 · 총 ${totalCalls}건 추가`);
+  const spots = getHotspots();
+  showToast(`✅ ${files.length}장 완료 · ${totalCalls}건 추가 · 핫스팟 ${spots.length}곳`);
   document.getElementById('mapBtn').disabled = allData.length === 0;
 }
 
