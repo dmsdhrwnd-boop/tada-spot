@@ -6,6 +6,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0a0e1a">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>타다스팟</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -700,7 +703,7 @@ async function processQueue(files) {
   hideOverlay();
   updateHomeStats();
   const spots = getHotspots();
-  showToast(`✅ ${files.length}장 완료 · ${totalCalls}건 추가 · 핫스팟 ${spots.length}곳`);
+  showToast(`✅ ${files.length}장 완료 · ${totalCalls}건 · 전체${allData.length}건 · 핫스팟${spots.length}곳`);
   document.getElementById('mapBtn').disabled = allData.length === 0;
 }
 
