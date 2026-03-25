@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a0e1a">
+<title>타다스팟</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080c18;
+  --panel: #0e1322;
+  --card: #141a2e;
+  --accent: #00e5ff;
+  --hot: #ff5722;
+  --warm: #ffc107;
+  --cool: #7c4dff;
+  --text: #f0f2f8;
+  --muted: #5a6478;
+  --border: rgba(0,229,255,0.12);
+  --success: #00e676;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  font-family: 'Noto Sans KR', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  user-select: none;
+}
+
+/* ── SCREENS ── */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  transition: opacity 0.25s, transform 0.25s;
+}
+.screen.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(12px);
+}
+
+/* ── STATUS BAR SPACER ── */
+.safe-top { height: env(safe-area-inset-top, 0px); background: var(--bg); flex-shrink:0; }
+.safe-bot { height: env(safe-area-inset-bottom, 0px); flex-shrink:0; }
+
+/* ══════════════════════════════
+   SCREEN 1 — UPLOAD
+══════════════════════════════ */
+#uploadScreen {
+  background: var(--bg);
+}
+
+.upload-header {
+  padding: 16px 20px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.logo {
+  font-family: 'Space Mono', monospace;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -1px;
+  color: var(--accent);
+}
+.logo em { color: var(--hot); font-style: normal; }
+
+.badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(0,230,118,0.12);
+  border: 1px solid rgba(0,230,118,0.3);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--success);
+  letter-spacing: 1px;
+}
+.dot { width:6px; height:6px; background:var(--success); border-radius:50%; animation:blink 1.4s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* Big upload button */
+.upload-hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24px;
+  gap: 0;
+}
+
+.upload-btn {
+  width: 100%;
+  max-width: 340px;
+  aspect-ratio: 1/0.7;
+  background: linear-gradient(145deg, var(--card), #1a2040);
+  border: 2px dashed rgba(0,229,255,0.25);
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.upload-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(0,229,255,0.06), transparent 70%);
+}
+.upload-btn:active {
+  transform: scale(0.97);
+  border-color: var(--accent);
+  background: rgba(0,229,255,0.06);
+}
+
+.upload-icon-big {
+  font-size: 52px;
+  line-height: 1;
+  filter: drop-shadow(0 0 20px rgba(0,229,255,0.4));
+}
+.upload-label {
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--text);
+  text-align: center;
+}
+.upload-sub {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.5;
+}
+
+#fileInput { display: none; }
+
+/* Tip cards */
+.tips {
+  display: flex;
+  gap: 10px;
+  padding: 16px 20px;
+  flex-shrink: 0;
+}
+.tip {
+  flex: 1;
+  background: var(--card);
+  border-radius: 12px;
+  padding: 12px 10px;
+  text-align: center;
+  border: 1px solid var(--border);
+}
+.tip-icon { font-size: 20px; margin-bottom: 4px; }
+.tip-text { font-size: 10px; color: var(--muted); line-height: 1.4; }
+
+/* Stats summary */
+.summary-strip {
+  display: flex;
+  gap: 0;
+  padding: 0 20px 16px;
+  flex-shrink: 0;
+}
+.sum-item {
+  flex: 1;
+  text-align: center;
+  padding: 10px 0;
+  border-right: 1px solid var(--border);
+}
+.sum-item:last-child { border-right: none; }
+.sum-val {
+  font-family: 'Space Mono', monospace;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.sum-label { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+/* View map button */
+.map-btn {
+  margin: 0 20px 16px;
+  padding: 16px;
+  background: linear-gradient(135deg, var(--hot), #ff8a65);
+  border: none;
+  border-radius: 14px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 900;
+  font-family: 'Noto Sans KR', sans-serif;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.map-btn:active { transform: scale(0.97); opacity: 0.9; }
+.map-btn:disabled { background: var(--card); color: var(--muted); }
+
+/* ══════════════════════════════
+   AI PROCESSING OVERLAY
+══════════════════════════════ */
+#processingOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8,12,24,0.92);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  z-index: 9999;
+  backdrop-filter: blur(8px);
+}
+#processingOverlay.show { display: flex; }
+
+.proc-ring {
+  width: 80px;
+  height: 80px;
+  border: 3px solid rgba(0,229,255,0.15);
+  border-top: 3px solid var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.proc-title {
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--accent);
+  text-align: center;
+}
+.proc-sub {
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+  max-width: 240px;
+  line-height: 1.5;
+}
+
+/* ══════════════════════════════
+   SCREEN 2 — MAP
+══════════════════════════════ */
+#mapScreen {
+  background: var(--bg);
+}
+
+.map-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--panel);
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+.back-btn {
+  width: 36px; height: 36px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.back-btn:active { background: var(--border); transform: scale(0.93); }
+
+.map-header-text { flex: 1; }
+.map-title { font-size: 15px; font-weight: 900; }
+.map-sub { font-size: 11px; color: var(--muted); }
+
+.clock-chip {
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  color: var(--accent);
+  background: rgba(0,229,255,0.08);
+  border: 1px solid rgba(0,229,255,0.2);
+  border-radius: 8px;
+  padding: 4px 8px;
+  flex-shrink: 0;
+}
+
+#map {
+  flex: 1;
+  position: relative;
+}
+
+/* Bottom sheet */
+.bottom-sheet {
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  max-height: 45vh;
+  overflow-y: auto;
+}
+
+.recommend-card {
+  margin: 12px 14px 8px;
+  background: linear-gradient(135deg, rgba(255,87,34,0.2), rgba(255,87,34,0.05));
+  border: 1px solid rgba(255,87,34,0.35);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.rec-arrow { font-size: 28px; flex-shrink: 0; }
+.rec-info { flex: 1; min-width: 0; }
+.rec-label { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; color: var(--hot); text-transform: uppercase; }
+.rec-place { font-size: 17px; font-weight: 900; margin-top: 2px; }
+.rec-reason { font-size: 11px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+
+.list-title {
+  padding: 8px 14px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.rank-list {}
+.rank-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.rank-item:active { background: var(--card); }
+
+.rank-num {
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  width: 24px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.n1 { color: var(--hot); }
+.n2 { color: var(--warm); }
+.n3 { color: var(--accent); }
+.nx { color: var(--muted); }
+
+.rank-name { flex:1; font-size:14px; font-weight:700; }
+.rank-count {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+/* ── TIME BAR ── */
+.timebar-wrap {
+  padding: 8px 14px 4px;
+}
+.timebar-label-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--muted);
+  margin-bottom: 4px;
+  font-family: 'Space Mono', monospace;
+}
+.timebars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 30px;
+}
+.tbar {
+  flex: 1;
+  border-radius: 2px 2px 0 0;
+  min-height: 3px;
+  transition: height 0.4s;
+}
+.tbar.now { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* ── TOAST ── */
+#toast {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%) translateY(40px);
+  background: var(--success);
+  color: #000;
+  font-weight: 900;
+  font-size: 13px;
+  padding: 10px 22px;
+  border-radius: 30px;
+  z-index: 9998;
+  transition: transform 0.3s, opacity 0.3s;
+  opacity: 0;
+  white-space: nowrap;
+  pointer-events: none;
+}
+#toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+/* Leaflet dark */
+.leaflet-tile { filter: brightness(0.65) saturate(0.5) hue-rotate(185deg); }
+.leaflet-control-zoom a { background: var(--card) !important; color: var(--text) !important; border-color: var(--border) !important; }
+</style>
+</head>
+<body>
+
+<!-- UPLOAD SCREEN -->
+<div class="screen" id="uploadScreen">
+  <div class="safe-top"></div>
+  <div class="upload-header">
+    <div class="logo">타다<em>·</em>스팟</div>
+    <div class="badge"><div class="dot"></div>AI 분석</div>
+  </div>
+
+  <div class="upload-hero">
+    <label for="fileInput" class="upload-btn" id="uploadBtn">
+      <div class="upload-icon-big">🖼️</div>
+      <div class="upload-label">갤러리에서 선택</div>
+      <div class="upload-sub">여러 장 동시 선택 가능<br>콜카드 사진을 모두 올려보세요</div>
+    </label>
+  </div>
+  <input type="file" id="fileInput" accept="image/jpeg,image/png,image/gif,image/webp" multiple style="display:none;position:fixed;top:-9999px;">
+
+  <div class="tips">
+    <div class="tip">
+      <div class="tip-icon">🖼️</div>
+      <div class="tip-text">갤러리에서<br>여러 장 선택</div>
+    </div>
+    <div class="tip">
+      <div class="tip-icon">🤖</div>
+      <div class="tip-text">AI 자동<br>순서대로 분석</div>
+    </div>
+    <div class="tip">
+      <div class="tip-icon">📊</div>
+      <div class="tip-text">누적될수록<br>정확도 상승</div>
+    </div>
+  </div>
+
+  <div class="summary-strip">
+    <div class="sum-item">
+      <div class="sum-val" id="totalCallsHome">0</div>
+      <div class="sum-label">총 콜</div>
+    </div>
+    <div class="sum-item">
+      <div class="sum-val" id="hotZonesHome">0</div>
+      <div class="sum-label">핫존</div>
+    </div>
+    <div class="sum-item">
+      <div class="sum-val" id="peakHourHome">--</div>
+      <div class="sum-label">피크</div>
+    </div>
+  </div>
+
+  <button class="map-btn" id="mapBtn" disabled onclick="showMap()">
+    🗺️ 핫스팟 지도 보기
+  </button>
+  <div class="safe-bot"></div>
+</div>
+
+<!-- MAP SCREEN -->
+<div class="screen hidden" id="mapScreen">
+  <div class="safe-top"></div>
+  <div class="map-header">
+    <div class="back-btn" onclick="showUpload()">←</div>
+    <div class="map-header-text">
+      <div class="map-title">서울 콜 핫스팟</div>
+      <div class="map-sub" id="mapSubText">현재 시간 기준 수요 분석</div>
+    </div>
+    <div class="clock-chip" id="clockChip">--:--</div>
+    <div class="back-btn" onclick="centerOnMe()" title="내 위치로">📍</div>
+  </div>
+
+  <div id="map"></div>
+
+  <div class="bottom-sheet" id="bottomSheet">
+    <div class="recommend-card" id="recommendCard" style="display:none">
+      <div class="rec-arrow">🎯</div>
+      <div class="rec-info">
+        <div class="rec-label">지금 바로 여기</div>
+        <div class="rec-place" id="recPlace">--</div>
+        <div class="rec-reason" id="recReason">--</div>
+      </div>
+    </div>
+
+    <div class="timebar-wrap">
+      <div class="timebar-label-row">
+        <span>0시</span><span>6시</span><span>12시</span><span>18시</span><span>23시</span>
+      </div>
+      <div class="timebars" id="timebars"></div>
+    </div>
+
+    <div class="list-title">핫스팟 TOP 5</div>
+    <div class="rank-list" id="rankList">
+      <div style="padding:16px;text-align:center;color:var(--muted);font-size:12px;">업로드 후 표시됩니다</div>
+    </div>
+  </div>
+  <div class="safe-bot"></div>
+</div>
+
+<!-- AI Processing Overlay -->
+<div id="processingOverlay">
+  <div class="proc-ring"></div>
+  <div class="proc-title">AI 분석 중...</div>
+  <div class="proc-sub" id="procSub">콜카드에서 출발지와 시간을 읽고 있어요</div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ── STATE ─────────────────────────────────────────────────────
+let allData = [];
+const hourCounts = new Array(24).fill(0);
+let mapInit = false;
+let leafletMap;
+let mapMarkers = [], mapCircles = [];
+
+// ── SEOUL GU COORDS ───────────────────────────────────────────
+const guCoords = {
+  '강남구':[37.5172,127.0473],'서초구':[37.4837,127.0324],
+  '마포구':[37.5663,126.9014],'종로구':[37.5735,126.9790],
+  '중구':[37.5640,126.9979],'용산구':[37.5311,126.9810],
+  '송파구':[37.5145,127.1059],'영등포구':[37.5264,126.8963],
+  '성동구':[37.5507,127.0415],'광진구':[37.5384,127.0823],
+  '노원구':[37.6542,127.0568],'관악구':[37.4784,126.9516],
+  '동작구':[37.5124,126.9393],'강서구':[37.5509,126.8495],
+  '은평구':[37.6177,126.9227],'도봉구':[37.6688,127.0470],
+  '강북구':[37.6396,127.0255],'성북구':[37.5894,127.0167],
+  '서대문구':[37.5791,126.9368],'중랑구':[37.6063,127.0932],
+  '동대문구':[37.5744,127.0405],'강동구':[37.5301,127.1238],
+  '금천구':[37.4600,126.9002],'구로구':[37.4954,126.8874],
+};
+const jitter = () => (Math.random()-0.5)*0.025;
+function getCoords(text) {
+  if (!text) return [37.5665+jitter(), 126.9780+jitter()];
+  for (const [gu, c] of Object.entries(guCoords))
+    if (text.includes(gu)) return [c[0]+jitter(), c[1]+jitter()];
+  return [37.5665+jitter(), 126.9780+jitter()];
+}
+function getGu(text) {
+  if (!text) return '서울';
+  for (const gu of Object.keys(guCoords))
+    if (text.includes(gu)) return gu;
+  return '서울';
+}
+
+// ── CLOCK ─────────────────────────────────────────────────────
+function fmtTime() {
+  const n = new Date();
+  return String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
+}
+function updateClocks() {
+  const t = fmtTime();
+  const chip = document.getElementById('clockChip');
+  if (chip) chip.textContent = t;
+}
+updateClocks();
+setInterval(updateClocks, 15000);
+
+// ── SCREEN NAV ────────────────────────────────────────────────
+function showMap() {
+  document.getElementById('uploadScreen').classList.add('hidden');
+  document.getElementById('mapScreen').classList.remove('hidden');
+  if (!mapInit) initMap();
+  renderAll();
+  startGPS();
+}
+function showUpload() {
+  document.getElementById('mapScreen').classList.add('hidden');
+  document.getElementById('uploadScreen').classList.remove('hidden');
+}
+
+// ── MAP INIT ──────────────────────────────────────────────────
+function initMap() {
+  leafletMap = L.map('map', {
+    center:[37.5665, 126.9780], zoom:12,
+    zoomControl:false, attributionControl:false
+  });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(leafletMap);
+  L.control.zoom({position:'topright'}).addTo(leafletMap);
+  mapInit = true;
+}
+
+// ── UPLOAD ────────────────────────────────────────────────────
+document.getElementById('fileInput').addEventListener('change', e => {
+  const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
+  e.target.value = '';
+  if (!files.length) return;
+  processQueue(files);
+});
+
+async function processQueue(files) {
+  let done = 0, totalCalls = 0;
+  for (const file of files) {
+    done++;
+    showOverlay(`분석 중... (${done}/${files.length}장)\n잠시만 기다려 주세요`);
+    document.getElementById('procSub').textContent = `${done}/${files.length}장 처리 중`;
+    try {
+      const b64 = await readFileAsBase64(file);
+      const result = await callClaude(b64);
+      const added = applyResult(result, true);
+      totalCalls += added;
+    } catch(err) {
+      console.error(err);
+    }
+  }
+  hideOverlay();
+  updateHomeStats();
+  showToast(`✅ ${files.length}장 완료 · 총 ${totalCalls}건 추가`);
+  document.getElementById('mapBtn').disabled = allData.length === 0;
+}
+
+function readFileAsBase64(file) {
+  return new Promise((res, rej) => {
+    const reader = new FileReader();
+    reader.onload = e => res(e.target.result.split(',')[1]);
+    reader.onerror = rej;
+    reader.readAsDataURL(file);
+  });
+}
+
+function processFile(file) {
+  processQueue([file]);
+}
+
+async function callClaude(b64) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      messages: [{
+        role: 'user',
+        content: [
+          { type:'image', source:{ type:'base64', media_type:'image/jpeg', data:b64 } },
+          { type:'text', text:`이 이미지는 택시 콜카드 또는 콜 정보 화면입니다.
+다음을 JSON으로만 반환하세요. 다른 텍스트 없이:
+
+{"calls":[{"origin":"출발지(서울 구 이름 포함)","destination":"도착지","time":"시간 숫자(0-23)","notes":""}],"count":건수}
+
+규칙:
+- 서울 구 이름(강남구, 마포구 등)이 보이면 반드시 포함
+- 시간이 없으면 현재시간 ${new Date().getHours()} 사용
+- 여러 콜이 있으면 모두 추출
+- 응답은 반드시 JSON만` }
+        ]
+      }]
+    })
+  });
+  const data = await res.json();
+  const text = data.content.map(b=>b.text||'').join('');
+  return JSON.parse(text.replace(/```json|```/g,'').trim());
+}
+
+function applyResult(result, silent=false) {
+  if (!result.calls?.length) {
+    if (!silent) showToast('⚠️ 콜 정보를 찾지 못했어요');
+    return 0;
+  }
+  const now = new Date().getHours();
+  result.calls.forEach(c => {
+    const h = parseInt(c.time);
+    const hour = (!isNaN(h) && h>=0 && h<=23) ? h : now;
+    hourCounts[hour]++;
+    const coords = getCoords(c.origin) || getCoords(c.destination);
+    const dong = getGu(c.origin) || getGu(c.destination);
+    allData.push({ origin:c.origin, dest:c.destination, hour, coords, dong });
+  });
+  if (!silent) {
+    updateHomeStats();
+    showToast(`✅ ${result.calls.length}건 분석 완료!`);
+    document.getElementById('mapBtn').disabled = false;
+  }
+  return result.calls.length;
+}
+
+// ── HOME STATS ────────────────────────────────────────────────
+function updateHomeStats() {
+  document.getElementById('totalCallsHome').textContent = allData.length;
+  document.getElementById('hotZonesHome').textContent = new Set(allData.map(d=>d.dong)).size;
+  const peak = hourCounts.indexOf(Math.max(...hourCounts));
+  document.getElementById('peakHourHome').textContent = allData.length ? peak+'시' : '--';
+}
+
+// ── HOTSPOT CALC ──────────────────────────────────────────────
+function getHotspots() {
+  const now = new Date().getHours();
+  const rel = allData.filter(d => Math.abs(d.hour - now) <= 2);
+  const cnt = {}, crd = {};
+  rel.forEach(d => {
+    cnt[d.dong] = (cnt[d.dong]||0)+1;
+    if (!crd[d.dong]) crd[d.dong] = d.coords;
+  });
+  return Object.entries(cnt).sort((a,b)=>b[1]-a[1])
+    .map(([name,count])=>({name,count,coords:crd[name]}));
+}
+
+// ── RENDER ALL ────────────────────────────────────────────────
+function renderAll() {
+  const spots = getHotspots();
+  renderMapSpots(spots);
+  renderTimeBars();
+  renderRankList(spots);
+  renderRecommend(spots);
+  document.getElementById('mapSubText').textContent =
+    `현재 ${fmtTime()} 기준 · 총 ${allData.length}건`;
+}
+
+function renderMapSpots(spots) {
+  mapMarkers.forEach(m=>leafletMap.removeLayer(m));
+  mapCircles.forEach(c=>leafletMap.removeLayer(c));
+  mapMarkers=[]; mapCircles=[];
+  if (!spots.length) return;
+  const max = spots[0].count;
+  spots.forEach((s,i) => {
+    const r = s.count/max;
+    const color = i===0?'#ff5722':i===1?'#ffc107':i===2?'#00e5ff':'#7c4dff';
+    const circle = L.circle(s.coords, {
+      radius: 350+r*650, color, fillColor:color,
+      fillOpacity:0.18+r*0.12, weight:2, opacity:0.75
+    }).addTo(leafletMap);
+    mapCircles.push(circle);
+    if (i<5) {
+      const icon = L.divIcon({
+        className:'',
+        html:`<div style="background:${color};color:#000;font-weight:900;font-size:11px;padding:4px 9px;border-radius:20px;white-space:nowrap;box-shadow:0 2px 10px rgba(0,0,0,0.6);font-family:'Noto Sans KR',sans-serif;">${i+1} ${s.name} ${s.count}건</div>`,
+        iconAnchor:[0,0]
+      });
+      mapMarkers.push(L.marker(s.coords,{icon}).addTo(leafletMap));
+    }
+  });
+  if (spots[0]) leafletMap.flyTo(spots[0].coords, 13, {duration:1.2});
+}
+
+function renderTimeBars() {
+  const el = document.getElementById('timebars');
+  const now = new Date().getHours();
+  const max = Math.max(...hourCounts, 1);
+  el.innerHTML = hourCounts.map((v,i) => {
+    const pct = (v/max)*100;
+    const color = pct>65?'var(--hot)':pct>35?'var(--warm)':'rgba(0,229,255,0.45)';
+    return `<div class="tbar${i===now?' now':''}" style="height:${Math.max(pct,6)}%;background:${color}" title="${i}시 ${v}건"></div>`;
+  }).join('');
+}
+
+function renderRankList(spots) {
+  const el = document.getElementById('rankList');
+  if (!spots.length) {
+    el.innerHTML = `<div style="padding:16px;text-align:center;color:var(--muted);font-size:12px;">아직 데이터가 없습니다</div>`;
+    return;
+  }
+  el.innerHTML = spots.slice(0,5).map((s,i) => {
+    const cls = ['n1','n2','n3','nx','nx'][i];
+    let distText = '';
+    if (userLat !== null) {
+      const d = distKm(userLat, userLng, s.coords[0], s.coords[1]);
+      distText = d < 1 ? ` · ${Math.round(d*1000)}m` : ` · ${d.toFixed(1)}km`;
+    }
+    return `<div class="rank-item" onclick="flyTo(${s.coords[0]},${s.coords[1]})">
+      <div class="rank-num ${cls}">${i+1}</div>
+      <div class="rank-name">${s.name}<span style="font-size:10px;color:var(--muted);font-weight:400;">${distText}</span></div>
+      <div class="rank-count">${s.count}건</div>
+    </div>`;
+  }).join('');
+}
+
+function renderRecommend(spots) {
+  const card = document.getElementById('recommendCard');
+  if (!spots.length) { card.style.display='none'; return; }
+  card.style.display='flex';
+  const top = spots[0];
+  const h = new Date().getHours();
+  let reason = h>=22||h<=2 ? '심야 귀가 수요 집중 시간대'
+    : h>=7&&h<=9 ? '출근 피크 — 콜이 몰립니다'
+    : h>=17&&h<=19 ? '퇴근 러시아워 핫존'
+    : `현재 시간 기준 콜 수요 1위`;
+  document.getElementById('recPlace').textContent = '📍 ' + top.name;
+  document.getElementById('recReason').textContent = reason + ` (${top.count}건)`;
+}
+
+function flyTo(lat, lng) {
+  leafletMap.flyTo([lat,lng], 14, {duration:1});
+}
+
+// ── GPS / CURRENT LOCATION ────────────────────────────────────
+let userMarker = null;
+let userLat = null, userLng = null;
+let watchId = null;
+
+function startGPS() {
+  if (!navigator.geolocation) { showToast('⚠️ 이 브라우저는 GPS를 지원하지 않아요'); return; }
+  navigator.geolocation.getCurrentPosition(onGPS, onGPSErr, {enableHighAccuracy:true});
+  watchId = navigator.geolocation.watchPosition(onGPS, onGPSErr, {enableHighAccuracy:true, maximumAge:10000});
+}
+
+function onGPS(pos) {
+  userLat = pos.coords.latitude;
+  userLng = pos.coords.longitude;
+  if (!mapInit) return;
+
+  if (!userMarker) {
+    const icon = L.divIcon({
+      className:'',
+      html:`<div style="width:18px;height:18px;background:#00e5ff;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 6px rgba(0,229,255,0.25);"></div>`,
+      iconAnchor:[9,9]
+    });
+    userMarker = L.marker([userLat, userLng], {icon, zIndexOffset:1000}).addTo(leafletMap);
+    userMarker.bindPopup('<b>내 위치</b>');
+  } else {
+    userMarker.setLatLng([userLat, userLng]);
+  }
+
+  // Update nearest hotspot distances
+  renderRankList(getHotspots());
+  updateNearestRecommend();
+}
+
+function onGPSErr(err) {
+  console.warn('GPS error:', err.message);
+}
+
+function distKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2-lat1)*Math.PI/180;
+  const dLng = (lng2-lng1)*Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function updateNearestRecommend() {
+  if (userLat === null) return;
+  const spots = getHotspots();
+  if (!spots.length) return;
+  // sort by distance
+  const withDist = spots.map(s => ({
+    ...s,
+    dist: distKm(userLat, userLng, s.coords[0], s.coords[1])
+  }));
+  withDist.sort((a,b) => {
+    // weighted: demand score + proximity bonus
+    const scoreA = a.count - a.dist * 0.5;
+    const scoreB = b.count - b.dist * 0.5;
+    return scoreB - scoreA;
+  });
+  const best = withDist[0];
+  document.getElementById('recPlace').textContent = '📍 ' + best.name;
+  document.getElementById('recReason').textContent =
+    `현재 위치에서 ${best.dist < 1 ? Math.round(best.dist*1000)+'m' : best.dist.toFixed(1)+'km'} · ${best.count}건`;
+  document.getElementById('recommendCard').style.display = 'flex';
+}
+
+function centerOnMe() {
+  if (userLat === null) { showToast('📡 GPS 신호를 잡는 중...'); startGPS(); return; }
+  leafletMap.flyTo([userLat, userLng], 14, {duration:1});
+}
+
+// ── OVERLAY ───────────────────────────────────────────────────
+function showOverlay(msg) {
+  document.getElementById('procSub').textContent = msg;
+  document.getElementById('processingOverlay').classList.add('show');
+}
+function hideOverlay() {
+  document.getElementById('processingOverlay').classList.remove('show');
+}
+
+// ── TOAST ─────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>
