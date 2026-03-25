@@ -736,7 +736,9 @@ async function callClaude(b64) {
 - 서울 구 이름(강남구, 마포구 등)이 보이면 반드시 포함
 - 시간이 없으면 현재시간 ${new Date().getHours()} 사용
 - 여러 콜이 있으면 모두 추출
-- 응답은 반드시 JSON만` }
+- 응답은 반드시 JSON만
+- 인천공항, 김포공항, 인천시, 경기도 등 서울 외 지역이 출발지인 콜은 calls 배열에서 완전히 제외
+- 서울 25개 구(강남구,서초구,마포구 등) 출발지 콜만 포함` }
         ]
       }]
     })
@@ -855,16 +857,45 @@ function updateTop3(spots) {
 }
 
 // ── HOTSPOT CALC ──────────────────────────────────────────────
+// 제외할 키워드 (공항 등 서울 외 지역)
+const EXCLUDE_KEYWORDS = ['인천공항','김포공항','인천국제','공항터미널','인천시','인천 ','경기도','수원','성남','부천','안양','고양','용인','시흥','광명','의왕','과천'];
+
+function isSeoulOnly(text) {
+  if (!text) return true;
+  return !EXCLUDE_KEYWORDS.some(k => text.includes(k));
+}
+
 function getHotspots() {
   const now = new Date().getHours();
-  const rel = allData.filter(d => Math.abs(d.hour - now) <= 2);
+  // 현재 시간 ±2시간 + 서울 외 지역 제외
+  const rel = allData.filter(d =>
+    Math.abs(d.hour - now) <= 2 &&
+    isSeoulOnly(d.origin) &&
+    isSeoulOnly(d.dest) &&
+    d.dong !== '서울' // 구 특정 안 된 데이터 제외
+  );
   const cnt = {}, crd = {};
   rel.forEach(d => {
     cnt[d.dong] = (cnt[d.dong]||0)+1;
     if (!crd[d.dong]) crd[d.dong] = d.coords;
   });
-  return Object.entries(cnt).sort((a,b)=>b[1]-a[1])
-    .map(([name,count])=>({name,count,coords:crd[name]}));
+
+  const spots = Object.entries(cnt)
+    .map(([name,count])=>({name, count, coords:crd[name]}));
+
+  // GPS 있으면 거리 가중치 적용 (가까울수록 우선)
+  if (userLat !== null) {
+    spots.forEach(s => {
+      s.dist = distKm(userLat, userLng, s.coords[0], s.coords[1]);
+      // 점수 = 콜수 - 거리 페널티 (2km 이내는 보너스)
+      s.score = s.count + (s.dist <= 2 ? 5 : 0) - s.dist * 1.5;
+    });
+    spots.sort((a,b) => b.score - a.score);
+  } else {
+    spots.sort((a,b) => b.count - a.count);
+  }
+
+  return spots;
 }
 
 // ── RENDER ALL ────────────────────────────────────────────────
