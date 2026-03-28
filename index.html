@@ -762,7 +762,7 @@ async function callClaude(b64) {
   });
 
   const data = await res.json();
-  console.log('OpenRouter 응답:', JSON.stringify(data));
+  console.log('OpenRouter:', JSON.stringify(data));
 
   if (data.error) {
     showToast('❌ API 오류: ' + data.error.message);
