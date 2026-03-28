@@ -726,7 +726,7 @@ function processFile(file) {
 }
 
 async function callClaude(b64) {
-  const GEMINI_KEY = 'AIzaSyCK8kevKGOUhyD_ysDdkWQEitxOjxlBgpY';
+  const GEMINI_KEY = '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';
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent?key=${GEMINI_KEY}`,
     {
