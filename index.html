@@ -765,7 +765,7 @@ async function callClaude(b64) {
   console.log('OpenRouter:', JSON.stringify(data));
 
   if (data.error) {
-    showToast('❌ API 오류: ' + data.error.message);
+    showToast('API error: ' + data.error.message);
     throw new Error(data.error.message);
   }
 
@@ -773,8 +773,8 @@ async function callClaude(b64) {
   console.log('OpenRouter text:', text);
 
   if (!text) {
-    showToast('❌ 응답 없음');
-    throw new Error('빈 응답');
+    showToast('❌ no response');
+    throw new Error('empty respomse 응답');
   }
 
   const clean = text.replace(/```json|```/g,'').trim();
