@@ -770,7 +770,7 @@ async function callClaude(b64) {
   }
 
   const text = data.choices?.[0]?.message?.content || '';
-  OpenRouter text:, text);
+  console.log('OpenRouter text:', text);
 
   if (!text) {
     showToast('❌ 응답 없음');
